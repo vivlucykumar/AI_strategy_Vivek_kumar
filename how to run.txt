@@ -1,0 +1,4 @@
+#how to run
+
+cd "C:\Vivek\Personal\Documents\IIMA Strategic mgt course\16_Business Ideas\AI_strategy"
+streamlit run chat_app.py
