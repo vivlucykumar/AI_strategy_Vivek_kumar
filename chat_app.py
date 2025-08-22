@@ -5,12 +5,6 @@ import streamlit as st
 import base64
 import os
 
-logo_path = os.path.join("assets", "Indian Institute of Management logo.jpeg")
-
-with open(logo_path, "rb") as img_file:
-    logo_base64 = base64.b64encode(img_file.read()).decode()
-
-
 # -------------------------
 # Streamlit Page Config
 # -------------------------
@@ -50,7 +44,7 @@ logo_path = os.path.join("data", "Indian Institute of Management logo.jpeg")
 
 with open(logo_path, "rb") as img_file:
     logo_base64 = base64.b64encode(img_file.read()).decode()
-    
+
 st.set_page_config(page_title="IIMA Strategy SMBL07 Assistant By Vivek Kumar", page_icon="📊", layout="centered")
 
 st.markdown(
