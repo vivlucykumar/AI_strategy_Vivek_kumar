@@ -17,17 +17,11 @@ langchain-community==0.2.16
 langchain-chroma==0.1.4
 langchain-ollama==0.1.2
 
-# Vector store backend
-chromadb==0.5.5
+# Vector store backend (compatible with langchain-chroma 0.1.4)
+chromadb==0.5.3
 
 # SQLite fix for Chroma
 pysqlite3-binary
 
 # PDF loader (if you’re using it)
 pypdf==4.3.1
-
-
-
-
-
-
