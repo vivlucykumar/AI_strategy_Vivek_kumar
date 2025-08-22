@@ -8,15 +8,15 @@
 # langchain-chroma
 
 
-# Core LangChain stack (newer & compatible)
+# LangChain ecosystem
 langchain==0.2.16
 langchain-community==0.2.16
 langchain-chroma==0.1.4
 langchain-ollama==0.1.3
 langchain-core==0.2.38
 
-# Vector DB
-chromadb==0.5.6
+# Vector DB (Chroma >=1.0 supports Python 3.13)
+chromadb==1.0.19
 
 # Utilities
 pysqlite3-binary
