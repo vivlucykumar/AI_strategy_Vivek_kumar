@@ -180,5 +180,5 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
-#dbfile
+#ignore chroma db
 chroma_db/chroma.sqlite3
