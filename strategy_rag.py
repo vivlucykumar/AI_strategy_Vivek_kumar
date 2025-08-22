@@ -1,121 +1,150 @@
-# # Patch sqlite3 with pysqlite3 (needed for Streamlit Cloud / Python 3.13)
-# import sys
-# try:
-#     __import__("pysqlite3")
-#     sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
-# except ImportError:
-#     pass
+# Patch sqlite3 with pysqlite3 (needed for Streamlit Cloud / Python 3.13)
+import sys
+try:
+    __import__("pysqlite3")
+    sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
+except ImportError:
+    pass
 
-# import chromadb
-# import ollama
-# from langchain.chains import create_retrieval_chain
-# from langchain.chains.combine_documents import create_stuff_documents_chain
-# from langchain_core.prompts import PromptTemplate
-# from langchain_core.runnables import RunnableLambda
+import chromadb
+import ollama
+from langchain.chains import create_retrieval_chain
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain_core.prompts import PromptTemplate
+from langchain_core.runnables import RunnableLambda
+from langchain_community.vectorstores import Chroma
+from langchain_ollama import OllamaEmbeddings
+
+# -------------------------
+# 1. LLM via Ollama
+# -------------------------
+def ollama_llm(prompt: str) -> str:
+    response = ollama.generate(model="llama3", prompt=prompt)
+    return response["response"]
+
+llm = RunnableLambda(lambda x: ollama_llm(x.to_string()))
+
+# -------------------------
+# 2. Embeddings
+# -------------------------
+embedding_function = OllamaEmbeddings(model="nomic-embed-text")
+
+# -------------------------
+# 3. Load Chroma vectorstore
+# -------------------------
+DB_DIR = "./chroma_db"
+COLLECTION_NAME = "strategy_docs"
+
+client = chromadb.PersistentClient(path=DB_DIR)
+vectorstore = Chroma(
+    client=client,
+    collection_name=COLLECTION_NAME,
+    embedding_function=embedding_function,
+)
+retriever = vectorstore.as_retriever()
+
+# -------------------------
+# 4. Define the RAG prompt
+# -------------------------
+prompt = PromptTemplate(
+    template="""You are a helpful assistant for answering questions about business strategy.
+
+Use the following document context to answer the question.
+If the answer cannot be found in the context, say you don’t know.
+
+Context:
+{context}
+
+Question:
+{input}
+
+Answer:""",
+    input_variables=["context", "input"],
+)
+
+# -------------------------
+# 5. Create chain
+# -------------------------
+document_chain = create_stuff_documents_chain(llm, prompt)
+qa_chain = create_retrieval_chain(retriever, document_chain)
+
+# -------------------------
+# 6. CLI for local testing
+# -------------------------
+if __name__ == "__main__":
+    print("✅ Strategy RAG Assistant (Ollama client) — type 'exit' to quit.\n")
+    while True:
+        query = input("Question: ")
+        if query.lower() in ["exit", "quit"]:
+            break
+        result = qa_chain.invoke({"input": query})
+        print("\nAnswer:", result["answer"], "\n")
+
+
+# ############################################################
+# #with hugging face 
+# # strategy_rag.py
+# # strategy_rag.py
+# import os
+# import streamlit as st
 # from langchain_community.vectorstores import Chroma
-# from langchain_ollama import OllamaEmbeddings
+# from langchain_community.embeddings import HuggingFaceEmbeddings
+# from langchain_community.llms import HuggingFaceHub
+# from langchain.chains import RetrievalQA
+# from langchain.prompts import PromptTemplate
 
-# # -------------------------
-# # 1. LLM via Ollama
-# # -------------------------
-# def ollama_llm(prompt: str) -> str:
-#     response = ollama.generate(model="llama3", prompt=prompt)
-#     return response["response"]
+# # --- 1. Embeddings (local, free, no API key needed)
+# embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
 
-# llm = RunnableLambda(lambda x: ollama_llm(x.to_string()))
+# # --- 2. Load Chroma vectorstore
+# persist_directory = "chroma_db"
+# vectorstore = Chroma(persist_directory=persist_directory, embedding_function=embeddings)
+# retriever = vectorstore.as_retriever(search_kwargs={"k": 4})
 
-# # -------------------------
-# # 2. Embeddings
-# # -------------------------
-# embedding_function = OllamaEmbeddings(model="nomic-embed-text")
+# # --- 3. Hugging Face Hub API token (works on local + Streamlit Cloud)
+# def get_hf_token():
+#     try:
+#         # First try Streamlit secrets (for Streamlit Cloud)
+#         return st.secrets["HUGGINGFACEHUB_API_TOKEN"]
+#     except Exception:
+#         # Fallback to environment variable (for local dev)
+#         return os.getenv("HUGGINGFACEHUB_API_TOKEN")
 
-# # -------------------------
-# # 3. Load Chroma vectorstore
-# # -------------------------
-# DB_DIR = "./chroma_db"
-# COLLECTION_NAME = "strategy_docs"
+# hf_token = get_hf_token()
+# if not hf_token:
+#     raise ValueError(
+#         "❌ No Hugging Face API token found! "
+#         "Please set HUGGINGFACEHUB_API_TOKEN in .streamlit/secrets.toml or as an environment variable."
+#     )
 
-# client = chromadb.PersistentClient(path=DB_DIR)
-# vectorstore = Chroma(
-#     client=client,
-#     collection_name=COLLECTION_NAME,
-#     embedding_function=embedding_function,
+# # --- 4. Hugging Face LLM
+# llm = HuggingFaceHub(
+#     repo_id="facebook/bart-large-cnn",  # you can swap this with another model
+#     model_kwargs={"temperature": 0.3, "max_length": 512},
+#     huggingfacehub_api_token=hf_token,
 # )
-# retriever = vectorstore.as_retriever()
 
-# # -------------------------
-# # 4. Define the RAG prompt
-# # -------------------------
-# prompt = PromptTemplate(
-#     template="""You are a helpful assistant for answering questions about business strategy.
-
-# Use the following document context to answer the question.
-# If the answer cannot be found in the context, say you don’t know.
+# # --- 5. Prompt template
+# prompt_template = """
+# Use the following context to answer the question at the end.
+# If you don’t know the answer, just say you don’t know. Be concise.
 
 # Context:
 # {context}
 
-# Question:
-# {input}
+# Question: {question}
+# Answer:
+# """
 
-# Answer:""",
-#     input_variables=["context", "input"],
+# prompt = PromptTemplate(
+#     input_variables=["context", "question"],
+#     template=prompt_template,
 # )
 
-# # -------------------------
-# # 5. Create chain
-# # -------------------------
-# document_chain = create_stuff_documents_chain(llm, prompt)
-# qa_chain = create_retrieval_chain(retriever, document_chain)
-
-# # -------------------------
-# # 6. CLI for local testing
-# # -------------------------
-# if __name__ == "__main__":
-#     print("✅ Strategy RAG Assistant (Ollama client) — type 'exit' to quit.\n")
-#     while True:
-#         query = input("Question: ")
-#         if query.lower() in ["exit", "quit"]:
-#             break
-#         result = qa_chain.invoke({"input": query})
-#         print("\nAnswer:", result["answer"], "\n")
-
-
-############################################################
-#with hugging face 
-# strategy_rag.py
-from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain.prompts import PromptTemplate
-from langchain.chains import RetrievalQA
-from langchain_community.llms import HuggingFaceHub
-
-# Load embeddings
-embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-
-# Load Chroma vectorstore
-persist_directory = "chroma_db"
-vectorstore = Chroma(
-    persist_directory=persist_directory,
-    embedding_function=embeddings,
-)
-
-# Hugging Face LLM (pick a model you like)
-llm = HuggingFaceHub(
-    repo_id="facebook/bart-large-cnn",
-    model_kwargs={"temperature": 0.3, "max_length": 512},
-)
-
-# Prompt
-prompt = PromptTemplate(
-    template="Answer the question based only on the following context:\n\n{context}\n\nQuestion: {question}\nAnswer:",
-    input_variables=["context", "question"],
-)
-
-# Build RetrievalQA
-qa_chain = RetrievalQA.from_chain_type(
-    llm=llm,
-    retriever=vectorstore.as_retriever(search_kwargs={"k": 3}),
-    chain_type="stuff",
-    chain_type_kwargs={"prompt": prompt},
-)
+# # --- 6. Build the RetrievalQA chain
+# qa_chain = RetrievalQA.from_chain_type(
+#     llm=llm,
+#     retriever=retriever,
+#     chain_type="stuff",
+#     chain_type_kwargs={"prompt": prompt},
+# )
