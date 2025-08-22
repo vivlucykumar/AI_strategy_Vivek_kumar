@@ -13,6 +13,7 @@ st.set_page_config(page_title="IIMA Strategy SMBL07 Assistant By Vivek Kumar", p
 
 
 
+
 ALLOWED_EMAILS = {
     "viv1989kumar@gmail.com",
     "admin@gmail.com",
@@ -46,7 +47,7 @@ logo_path = os.path.join("data", "Indian Institute of Management logo.jpeg")
 with open(logo_path, "rb") as img_file:
     logo_base64 = base64.b64encode(img_file.read()).decode()
 
-st.set_page_config(page_title="IIMA Strategy SMBL07 Assistant By Vivek Kumar", page_icon="📊", layout="centered")
+
 
 st.markdown(
     f"""
