@@ -4,6 +4,13 @@ from strategy_rag import qa_chain  # Import your working RAG pipeline
 import streamlit as st
 import base64
 
+# -------------------------
+# Streamlit Page Config
+# -------------------------
+st.set_page_config(page_title="IIMA Strategy SMBL07 Assistant By Vivek Kumar", page_icon="📊", layout="centered")
+
+
+
 ALLOWED_EMAILS = {
     "viv1989kumar@gmail.com",
     "admin@gmail.com",
@@ -59,11 +66,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-
-# -------------------------
-# Streamlit Page Config
-# -------------------------
-st.set_page_config(page_title="IIMA Strategy SMBL07 Assistant By Vivek Kumar", page_icon="📊", layout="centered")
 
 st.title("📊 IIMA Strategy SMBL07 Assistant By Vivek Kumar")
 st.write("Ask me any strategy-related question regarding out topics (Porter, SWOT, Corporate Strategy, etc.).")
