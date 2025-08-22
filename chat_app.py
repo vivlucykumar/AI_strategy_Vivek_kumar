@@ -5,6 +5,7 @@ import streamlit as st
 import base64
 import os
 
+
 # -------------------------
 # Streamlit Page Config
 # -------------------------
