@@ -1,103 +1,81 @@
-# chat_app.py
-import streamlit as st
-from strategy_rag import qa_chain
-import base64
-import os
+# Patch sqlite3 with pysqlite3 (needed for Streamlit Cloud / Python 3.13)
+import sys
+try:
+    __import__("pysqlite3")
+    sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
+except ImportError:
+    pass
+
+import chromadb
+import ollama
+from langchain.chains import create_retrieval_chain
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain_core.prompts import PromptTemplate
+from langchain_core.runnables import RunnableLambda
+from langchain_community.vectorstores import Chroma
+from langchain_ollama import OllamaEmbeddings
 
 # -------------------------
-# Streamlit Page Config (must be first Streamlit command)
+# 1. LLM via Ollama
 # -------------------------
-st.set_page_config(
-    page_title="IIMA Strategy SMBL07 Assistant By Vivek Kumar",
-    page_icon="📊",
-    layout="centered"
+def ollama_llm(prompt: str) -> str:
+    response = ollama.generate(model="llama3", prompt=prompt)
+    return response["response"]
+
+llm = RunnableLambda(lambda x: ollama_llm(x.to_string()))
+
+# -------------------------
+# 2. Embeddings
+# -------------------------
+embedding_function = OllamaEmbeddings(model="nomic-embed-text")
+
+# -------------------------
+# 3. Load Chroma vectorstore
+# -------------------------
+DB_DIR = "./chroma_db"
+COLLECTION_NAME = "strategy_docs"
+
+client = chromadb.PersistentClient(path=DB_DIR)
+vectorstore = Chroma(
+    client=client,
+    collection_name=COLLECTION_NAME,
+    embedding_function=embedding_function,
+)
+retriever = vectorstore.as_retriever()
+
+# -------------------------
+# 4. Define the RAG prompt
+# -------------------------
+prompt = PromptTemplate(
+    template="""You are a helpful assistant for answering questions about business strategy.
+
+Use the following document context to answer the question.
+If the answer cannot be found in the context, say you don’t know.
+
+Context:
+{context}
+
+Question:
+{input}
+
+Answer:""",
+    input_variables=["context", "input"],
 )
 
 # -------------------------
-# Allowed emails for login
+# 5. Create chain
 # -------------------------
-ALLOWED_EMAILS = {
-    "viv1989kumar@gmail.com",
-    "admin@gmail.com",
-    "user@gmail.com",
-    "chitra@gmail.com",
-}
-
-def login():
-    st.markdown("## Login")
-    email = st.text_input("Email", key="login_email")
-    password = st.text_input("Password", type="password", key="login_password")
-    if st.button("Login"):
-        if email.strip().lower() in [e.lower() for e in ALLOWED_EMAILS] and password:
-            st.session_state.logged_in = True
-            st.success("✅ Login successful!")
-        else:
-            st.error("❌ Access denied: Email not authorized.")
+document_chain = create_stuff_documents_chain(llm, prompt)
+qa_chain = create_retrieval_chain(retriever, document_chain)
 
 # -------------------------
-# Enforce login
+# 6. CLI for local testing
 # -------------------------
-if "logged_in" not in st.session_state or not st.session_state.logged_in:
-    login()
-    st.stop()
-
-# -------------------------
-# Background Logo (from repo data/)
-# -------------------------
-logo_path = os.path.join("data", "Indian Institute of Management logo.jpeg")
-if os.path.exists(logo_path):
-    with open(logo_path, "rb") as img_file:
-        logo_base64 = base64.b64encode(img_file.read()).decode()
-
-    st.markdown(
-        f"""
-        <style>
-        .stApp::before {{
-            content: "";
-            position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            background: url("data:image/jpeg;base64,{logo_base64}") center center no-repeat;
-            background-size: 60vw 60vw;
-            opacity: 0.07;
-            z-index: -1;
-        }}
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-
-# -------------------------
-# App Title
-# -------------------------
-st.title("📊 IIMA Strategy SMBL07 Assistant By Vivek Kumar")
-st.write("Ask me any strategy-related question regarding our topics (Porter, SWOT, Corporate Strategy, etc.).")
-
-# -------------------------
-# Chat History
-# -------------------------
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-# Display chat history
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
-
-# -------------------------
-# User Input
-# -------------------------
-if prompt := st.chat_input("Type your question here..."):
-    # Store user message
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
-
-    # Generate assistant reply
-    with st.chat_message("assistant"):
-        with st.spinner("Thinking..."):
-            result = qa_chain.invoke({"input": prompt})
-            response = result.get("answer") or result.get("output_text", "⚠️ No response generated.")
-            st.markdown(response)
-
-    # Store assistant message
-    st.session_state.messages.append({"role": "assistant", "content": response})
+if __name__ == "__main__":
+    print("✅ Strategy RAG Assistant (Ollama client) — type 'exit' to quit.\n")
+    while True:
+        query = input("Question: ")
+        if query.lower() in ["exit", "quit"]:
+            break
+        result = qa_chain.invoke({"input": query})
+        print("\nAnswer:", result["answer"], "\n")
