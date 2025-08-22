@@ -8,20 +8,14 @@
 # langchain-chroma
 
 
-# Core LangChain stack (newer & compatible)
 langchain==0.2.16
 langchain-community==0.2.16
-langchain-chroma==0.1.4
 langchain-ollama==0.1.3
 langchain-core==0.2.38
 
-# Vector DB
-chromadb
+chromadb==1.0.19
 
-# Utilities
 pysqlite3-binary
 pypdf==4.3.1
 numpy==1.26.4
-
-# App framework
 streamlit==1.38.0
