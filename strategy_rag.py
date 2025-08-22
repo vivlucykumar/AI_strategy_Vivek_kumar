@@ -1,52 +1,81 @@
-# strategy_rag.py
-from langchain.chains import RetrievalQA
-from langchain.prompts import PromptTemplate
+# Patch sqlite3 with pysqlite3 (needed for Streamlit Cloud / Python 3.13)
+import sys
+try:
+    __import__("pysqlite3")
+    sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
+except ImportError:
+    pass
+
+import chromadb
+import ollama
+from langchain.chains import create_retrieval_chain
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain_core.prompts import PromptTemplate
+from langchain_core.runnables import RunnableLambda
 from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_community.llms import HuggingFacePipeline
-from transformers import pipeline
+from langchain_ollama import OllamaEmbeddings
 
-DB_PATH = "chroma_db"
+# -------------------------
+# 1. LLM via Ollama
+# -------------------------
+def ollama_llm(prompt: str) -> str:
+    response = ollama.generate(model="llama3", prompt=prompt)
+    return response["response"]
 
-# Load HuggingFace embeddings (must match build_db.py)
-embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+llm = RunnableLambda(lambda x: ollama_llm(x.to_string()))
 
-# Load Chroma vector store
-vectordb = Chroma(persist_directory=DB_PATH, embedding_function=embeddings)
+# -------------------------
+# 2. Embeddings
+# -------------------------
+embedding_function = OllamaEmbeddings(model="nomic-embed-text")
 
-# Create retriever
-retriever = vectordb.as_retriever(search_kwargs={"k": 3})
+# -------------------------
+# 3. Load Chroma vectorstore
+# -------------------------
+DB_DIR = "./chroma_db"
+COLLECTION_NAME = "strategy_docs"
 
-# Define prompt
-prompt_template = """
-You are a helpful assistant for answering questions about Strategy.
-Use the following context to answer the question concisely.
-If the answer is not in the context, just say "I don’t know."
+client = chromadb.PersistentClient(path=DB_DIR)
+vectorstore = Chroma(
+    client=client,
+    collection_name=COLLECTION_NAME,
+    embedding_function=embedding_function,
+)
+retriever = vectorstore.as_retriever()
+
+# -------------------------
+# 4. Define the RAG prompt
+# -------------------------
+prompt = PromptTemplate(
+    template="""You are a helpful assistant for answering questions about business strategy.
+
+Use the following document context to answer the question.
+If the answer cannot be found in the context, say you don’t know.
 
 Context:
 {context}
 
 Question:
-{question}
+{input}
 
-Answer:"""
-
-PROMPT = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
-
-# Hugging Face LLM pipeline (free, no API key)
-generator = pipeline(
-    "text2text-generation",
-    model="google/flan-t5-base",   # lightweight & free
-    tokenizer="google/flan-t5-base",
-    max_length=512
+Answer:""",
+    input_variables=["context", "input"],
 )
-llm = HuggingFacePipeline(pipeline=generator)
 
-# Retrieval QA Chain
-qa_chain = RetrievalQA.from_chain_type(
-    llm=llm,
-    retriever=retriever,
-    chain_type="stuff",
-    chain_type_kwargs={"prompt": PROMPT},
-    return_source_documents=True
-)
+# -------------------------
+# 5. Create chain
+# -------------------------
+document_chain = create_stuff_documents_chain(llm, prompt)
+qa_chain = create_retrieval_chain(retriever, document_chain)
+
+# -------------------------
+# 6. CLI for local testing
+# -------------------------
+if __name__ == "__main__":
+    print("✅ Strategy RAG Assistant (Ollama client) — type 'exit' to quit.\n")
+    while True:
+        query = input("Question: ")
+        if query.lower() in ["exit", "quit"]:
+            break
+        result = qa_chain.invoke({"input": query})
+        print("\nAnswer:", result["answer"], "\n")

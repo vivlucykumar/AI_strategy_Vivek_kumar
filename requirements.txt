@@ -8,26 +8,14 @@
 # langchain-chroma
 
 
-# Core RAG / LangChain
 langchain==0.2.16
 langchain-community==0.2.16
-langchain-chroma==0.1.4
+langchain-ollama==0.1.3
+langchain-core==0.2.38
 
-# Vector database
-chromadb==0.5.23
+chromadb==1.0.19
 
-# Hugging Face models (LLM + Embeddings)
-transformers==4.44.2
-sentence-transformers==3.1.1
-accelerate>=0.33.0
-torch>=2.3.0
-
-# PDF / text loaders
+pysqlite3-binary
 pypdf==4.3.1
-
-# Web app
+numpy==1.26.4
 streamlit==1.38.0
-
-# Utilities
-numpy>=1.26.0
-scikit-learn>=1.5.0
