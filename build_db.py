@@ -10,20 +10,25 @@ DB_PATH = "chroma_db"
 
 def build_vectorstore():
     # Load PDFs and text files
-    loaders = [
-        PyPDFDirectoryLoader(DATA_PATH),
-        TextLoader(os.path.join(DATA_PATH, "extra.txt")) if os.path.exists(os.path.join(DATA_PATH, "extra.txt")) else None
-    ]
+    loaders = []
+    if os.path.exists(DATA_PATH):
+        loaders.append(PyPDFDirectoryLoader(DATA_PATH))
+        txt_file = os.path.join(DATA_PATH, "extra.txt")
+        if os.path.exists(txt_file):
+            loaders.append(TextLoader(txt_file))
+    else:
+        print("⚠️ Data folder not found. Please create 'data/' and add PDFs or text files.")
+        return
+
     documents = []
     for loader in loaders:
-        if loader:
-            documents.extend(loader.load())
+        documents.extend(loader.load())
 
     # Split into chunks
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
     docs = text_splitter.split_documents(documents)
 
-    # HuggingFace embeddings (no API key needed)
+    # HuggingFace embeddings (free)
     embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
     # Create Chroma vector store

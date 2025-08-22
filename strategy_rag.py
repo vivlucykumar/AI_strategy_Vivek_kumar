@@ -3,7 +3,8 @@ from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_openai import ChatOpenAI  # You can switch this to Hugging Face LLM if needed
+from langchain_community.llms import HuggingFacePipeline
+from transformers import pipeline
 
 DB_PATH = "chroma_db"
 
@@ -18,9 +19,9 @@ retriever = vectordb.as_retriever(search_kwargs={"k": 3})
 
 # Define prompt
 prompt_template = """
-You are an assistant for answering questions about Strategy.
-Use the provided context to answer the question.
-If the answer is not in the context, say "I don’t know."
+You are a helpful assistant for answering questions about Strategy.
+Use the following context to answer the question concisely.
+If the answer is not in the context, just say "I don’t know."
 
 Context:
 {context}
@@ -32,8 +33,14 @@ Answer:"""
 
 PROMPT = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
 
-# Use OpenAI (requires key) OR swap with local HuggingFace pipeline
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+# Hugging Face LLM pipeline (free, no API key)
+generator = pipeline(
+    "text2text-generation",
+    model="google/flan-t5-base",   # lightweight & free
+    tokenizer="google/flan-t5-base",
+    max_length=512
+)
+llm = HuggingFacePipeline(pipeline=generator)
 
 # Retrieval QA Chain
 qa_chain = RetrievalQA.from_chain_type(
@@ -43,4 +50,3 @@ qa_chain = RetrievalQA.from_chain_type(
     chain_type_kwargs={"prompt": PROMPT},
     return_source_documents=True
 )
-    
