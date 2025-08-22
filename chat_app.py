@@ -7,7 +7,8 @@ import base64
 ALLOWED_EMAILS = {
     "viv1989kumar@gmail.com",
     "admin@gmail.com",
-    "user@gmail.com",  # Add all permitted emails, case-insensitive
+    "user@gmail.com",
+    "chitra@gmail.com",  # Add all permitted emails, case-insensitive
 }
 
 def login():
