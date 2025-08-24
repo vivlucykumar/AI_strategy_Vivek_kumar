@@ -84,12 +84,11 @@
 # ############################################################
 # #with hugging face 
 # strategy_rag.py
-# strategy_rag.py
 import os
 import streamlit as st
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_huggingface import HuggingFaceEndpoint
+from langchain_google_genai import ChatGoogleGenerativeAI # Import the new LLM
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 
@@ -109,26 +108,26 @@ persist_directory = "./chroma_db"
 vectorstore = Chroma(persist_directory=persist_directory, embedding_function=embeddings)
 retriever = vectorstore.as_retriever(search_kwargs={"k": 4})
 
-# --- 3. Hugging Face Hub API token
-def get_hf_token():
+# --- 3. Get API token from secrets
+def get_google_api_key():
     try:
-        return st.secrets["HUGGINGFACEHUB_API_TOKEN"]
+        return st.secrets["GOOGLE_API_KEY"]
     except Exception:
-        return os.getenv("HUGGINGFACEHUB_API_TOKEN")
+        return os.getenv("GOOGLE_API_KEY")
 
-hf_token = get_hf_token()
-if not hf_token:
+google_api_key = get_google_api_key()
+if not google_api_key:
     raise ValueError(
-        "❌ No Hugging Face API token found! "
-        "Please set HUGGINGFACEHUB_API_TOKEN in .streamlit/secrets.toml or as an environment variable."
+        "❌ No Google API key found! "
+        "Please set GOOGLE_API_KEY in .streamlit/secrets.toml or as an environment variable."
     )
 
-# --- 4. Hugging Face LLM
-llm = HuggingFaceEndpoint(
-    repo_id="google/gemma-2b-it",
-    max_new_tokens=512,
+# --- 4. Google Gemini LLM
+# Use the Google Gemini LLM, which is a stable and production-ready option
+llm = ChatGoogleGenerativeAI(
+    model="gemini-1.5-pro-latest",  # A powerful and reliable model
     temperature=0.3,
-    huggingfacehub_api_token=hf_token,
+    google_api_key=google_api_key,
 )
 
 # --- 5. Prompt template
@@ -157,7 +156,7 @@ qa_chain = RetrievalQA.from_chain_type(
 
 # --- 7. CLI for local testing
 if __name__ == "__main__":
-    print("✅ Strategy RAG Assistant (Hugging Face client) — type 'exit' to quit.\n")
+    print("✅ Strategy RAG Assistant (Google Gemini client) — type 'exit' to quit.\n")
     while True:
         query = input("Question: ")
         if query.lower() in ["exit", "quit"]:
