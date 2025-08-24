@@ -44,3 +44,4 @@ huggingface-hub==0.24.6
 langchain-huggingface==0.0.3
 torch==2.3.1
 transformers==4.42.3
+rich==13.7.1
