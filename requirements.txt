@@ -38,4 +38,5 @@ pypdf==4.3.1
 chromadb==1.0.19
 pysqlite3-binary
 sentence-transformers==2.7.0
-huggingface-hub==0.24.6
+google-generativeai==0.7.0
+langchain-google-genai

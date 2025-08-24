@@ -84,29 +84,36 @@
 # ############################################################
 # #with hugging face 
 # strategy_rag.py
+# strategy_rag.py
 import os
 import streamlit as st
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_community.llms import HuggingFaceHub
+from langchain_huggingface import HuggingFaceEndpoint
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 
-# 1. Embeddings (local)
+# Patch sqlite3 with pysqlite3 if needed for Streamlit Cloud
+try:
+    __import__("pysqlite3")
+    import sys
+    sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
+except ImportError:
+    pass
+
+# --- 1. Embeddings (local, free, no API key needed)
 embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
 
-# 2. Load Chroma vectorstore
-persist_directory = "chroma_db"
+# --- 2. Load Chroma vectorstore
+persist_directory = "./chroma_db"
 vectorstore = Chroma(persist_directory=persist_directory, embedding_function=embeddings)
 retriever = vectorstore.as_retriever(search_kwargs={"k": 4})
 
-# 3. Hugging Face Hub API token
+# --- 3. Hugging Face Hub API token
 def get_hf_token():
     try:
-        # First try Streamlit secrets (for Streamlit Cloud)
         return st.secrets["HUGGINGFACEHUB_API_TOKEN"]
     except Exception:
-        # Fallback to environment variable (for local dev)
         return os.getenv("HUGGINGFACEHUB_API_TOKEN")
 
 hf_token = get_hf_token()
@@ -116,14 +123,15 @@ if not hf_token:
         "Please set HUGGINGFACEHUB_API_TOKEN in .streamlit/secrets.toml or as an environment variable."
     )
 
-# 4. Hugging Face LLM
-llm = HuggingFaceHub(
-    repo_id="mistralai/Mistral-7B-Instruct-v0.2", # A good, free alternative
-    model_kwargs={"temperature": 0.3, "max_length": 512},
+# --- 4. Hugging Face LLM
+llm = HuggingFaceEndpoint(
+    repo_id="google/gemma-2b-it",
+    max_new_tokens=512,
+    temperature=0.3,
     huggingfacehub_api_token=hf_token,
 )
 
-# 5. Prompt template
+# --- 5. Prompt template
 prompt_template = """
 Use the following context to answer the question at the end.
 If you don’t know the answer, just say you don’t know. Be concise.
@@ -134,16 +142,26 @@ Context:
 Question: {question}
 Answer:
 """
-
 prompt = PromptTemplate(
     input_variables=["context", "question"],
     template=prompt_template,
 )
 
-# 6. Build the RetrievalQA chain
+# --- 6. Build the RetrievalQA chain
 qa_chain = RetrievalQA.from_chain_type(
     llm=llm,
     retriever=retriever,
     chain_type="stuff",
     chain_type_kwargs={"prompt": prompt},
 )
+
+# --- 7. CLI for local testing
+if __name__ == "__main__":
+    print("✅ Strategy RAG Assistant (Hugging Face client) — type 'exit' to quit.\n")
+    while True:
+        query = input("Question: ")
+        if query.lower() in ["exit", "quit"]:
+            break
+        result = qa_chain.invoke({"query": query})
+        response = result.get("result", "⚠️ No answer found.")
+        print("\nAnswer:", response, "\n")
