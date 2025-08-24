@@ -40,3 +40,5 @@ pysqlite3-binary
 sentence-transformers==2.7.0
 google-generativeai==0.7.0
 langchain-google-genai
+huggingface-hub==0.24.6
+langchain-huggingface==0.0.3
