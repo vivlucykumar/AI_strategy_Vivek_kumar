@@ -42,11 +42,6 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
     logged_in = login()
     st.stop()  # This prevents running the rest of the app unless logged in
 
-
-
-
-
-
 st.markdown(
     f"""
     <style>
@@ -94,7 +89,7 @@ if prompt := st.chat_input("Type your question here..."):
     # Generate assistant reply
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
-            result = qa_chain.invoke({"query": prompt})
+            result = qa_chain.invoke({"input": prompt})
             response = result.get("answer") or result.get("output_text", "⚠️ No response generated.")
             st.markdown(response)
 
