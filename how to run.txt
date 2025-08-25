@@ -37,7 +37,7 @@ Clone the repository and set up a virtual environment.
 git clone https://github.com/your-username/ai_strategy.git
 cd ai_strategy
 python -m venv .venv
-source .venv/bin/activate
+source venv\Scripts\activate
 
 Create the .streamlit/secrets.toml file.
 
