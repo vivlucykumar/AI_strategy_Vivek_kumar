@@ -105,6 +105,7 @@ import os
 import sys
 
 # Patch sqlite3 for Streamlit Cloud compatibility
+# This code must be at the very top of the script
 try:
     __import__("pysqlite3")
     sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
