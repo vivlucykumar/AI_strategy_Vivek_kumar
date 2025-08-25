@@ -102,34 +102,3 @@ if prompt := st.chat_input("Type your question here..."):
     st.session_state.messages.append({"role": "assistant", "content": response})
 
 # ############################################################
-#with hugging face 
-
-
-# # chat_app.py
-# import streamlit as st
-# from strategy_rag import qa_chain
-
-# st.set_page_config(page_title="Strategy RAG Assistant", layout="wide")
-
-# st.title("📘 Strategy RAG Assistant")
-
-# if "messages" not in st.session_state:
-#     st.session_state["messages"] = []
-
-# # Display past messages
-# for msg in st.session_state["messages"]:
-#     with st.chat_message(msg["role"]):
-#         st.markdown(msg["content"])
-
-# # Chat input
-# if prompt := st.chat_input("Ask a question about your strategy PDFs..."):
-#     st.session_state["messages"].append({"role": "user", "content": prompt})
-#     with st.chat_message("user"):
-#         st.markdown(prompt)
-
-#     with st.chat_message("assistant"):
-#         with st.spinner("Thinking..."):
-#             result = qa_chain.invoke({"query": prompt})
-#             response = result.get("result", "⚠️ No answer found.")
-#             st.markdown(response)
-#     st.session_state["messages"].append({"role": "assistant", "content": response})
