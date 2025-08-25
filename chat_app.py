@@ -98,7 +98,6 @@
 
 # # ############################################################
 # chat_app.py
-# chat_app.py
 
 import streamlit as st
 import base64
@@ -136,7 +135,7 @@ def show_login_page():
         if email.strip().lower() in [e.lower() for e in ALLOWED_EMAILS] and password:
             st.session_state.logged_in = True
             st.success("Login successful! Please click 'Login' again.")
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("Access denied: Email not authorized.")
 
